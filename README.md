@@ -2,6 +2,29 @@
 
 Install and run GUI Linux in a virtual machine using the Virtualization framework.
 
+## AGL stuf
+
+Create a directory AGL in a Linux machine and place there a prebuilt kernel and rootfs:
+https://download.automotivelinux.org/AGL/release/needlefish/14.0.1/qemuarm64/deploy/images/qemuarm64/Image
+https://download.automotivelinux.org/AGL/release/needlefish/14.0.1/qemuarm64/deploy/images/qemuarm64/agl-demo-platform-crosssdk-qemuarm64.ext4.xz
+
+uncompress the rootfs:
+unxz agl-demo-platform-crosssdk-qemuarm64.ext4.xz
+
+prepare a disk image:
+dd if=/dev/zero of=Disk.img bs=1M count=7000
+sudo losetup -Pf Disk.img
+// note the /dev/loopX that has been created
+sudo fdisk /dev/loopX
+// TODO: properly handle SystremReady-IR bootflow (i.e. UEFI compatible)
+//Create a 800MB EFI partition and the rest as a Linux partition
+sudo dd if=agl-demo-platform-crosssdk-qemuarm64.ext4 of=/dev/loopXp2 bs=1M
+
+// Copy this directory to your mac in /Users/<user>/AGL
+
+run the command
+
+ 
 ## Overview
 
 This sample code project demonstrates how to install and run GUI Linux virtual machines (VMs) on a Mac.

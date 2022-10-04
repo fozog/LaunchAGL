@@ -7,9 +7,9 @@ The app delegate that sets up and starts the virtual machine.
 
 import Virtualization
 
-let vmBundlePath = NSHomeDirectory() + "/GUI Linux VM.bundle/"
+let vmBundlePath = NSHomeDirectory() + "/AGL/"
 let mainDiskImagePath = vmBundlePath + "Disk.img"
-let efiVariableStorePath = vmBundlePath + "NVRAM"
+let kernelPath = vmBundlePath + "Image"
 let machineIdentifierPath = vmBundlePath + "MachineIdentifier"
 
 @main
@@ -33,7 +33,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, VZVirtualMachineDelegate {
         do {
             try FileManager.default.createDirectory(atPath: vmBundlePath, withIntermediateDirectories: false)
         } catch {
-            fatalError("Failed to create “GUI Linux VM.bundle.”")
+            fatalError("Failed to create “AGL.”")
         }
     }
 
@@ -106,22 +106,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, VZVirtualMachineDelegate {
         return machineIdentifier
     }
 
-    private func createEFIVariableStore() -> VZEFIVariableStore {
-        guard let efiVariableStore = try? VZEFIVariableStore(creatingVariableStoreAt: URL(fileURLWithPath: efiVariableStorePath)) else {
-            fatalError("Failed to create the EFI variable store.")
-        }
-
-        return efiVariableStore
-    }
-
-    private func retrieveEFIVariableStore() -> VZEFIVariableStore {
-        if !FileManager.default.fileExists(atPath: efiVariableStorePath) {
-            fatalError("EFI variable store does not exist.")
-        }
-
-        return VZEFIVariableStore(url: URL(fileURLWithPath: efiVariableStorePath))
-    }
-
     private func createUSBMassStorageDeviceConfiguration() -> VZUSBMassStorageDeviceConfiguration {
         guard let intallerDiskAttachment = try? VZDiskImageStorageDeviceAttachment(url: installerISOPath!, readOnly: true) else {
             fatalError("Failed to create installer's disk attachment.")
@@ -186,21 +170,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, VZVirtualMachineDelegate {
         virtualMachineConfiguration.memorySize = computeMemorySize()
 
         let platform = VZGenericPlatformConfiguration()
-        let bootloader = VZEFIBootLoader()
+        let bootloader =  VZLinuxBootLoader(kernelURL: URL(fileURLWithPath: kernelPath))
+        bootloader.commandLine = "root=/dev/vda2"
         let disksArray = NSMutableArray()
 
         if needsInstall {
             // This is a fresh install: Create a new machine identifier and EFI variable store,
             // and configure a USB mass storage device to boot the ISO image.
             platform.machineIdentifier = createAndSaveMachineIdentifier()
-            bootloader.variableStore = createEFIVariableStore()
             disksArray.add(createUSBMassStorageDeviceConfiguration())
         } else {
             // The VM is booting from a disk image that already has the OS installed.
             // Retrieve the machine identifier and EFI variable store that were saved to
             // disk during installation.
             platform.machineIdentifier = retrieveMachineIdentifier()
-            bootloader.variableStore = retrieveEFIVariableStore()
         }
 
         virtualMachineConfiguration.platform = platform
@@ -246,33 +229,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, VZVirtualMachineDelegate {
     func applicationDidFinishLaunching(_ aNotification: Notification) {
         NSApp.activate(ignoringOtherApps: true)
 
-        // If "GUI Linux VM.bundle" doesn't exist, the sample app tries to create
-        // one and install Linux onto an empty disk image from the ISO image,
-        // otherwise, it tries to directly boot from the disk image inside
-        // the "GUI Linux VM.bundle".
-        if !FileManager.default.fileExists(atPath: vmBundlePath) {
-            needsInstall = true
-            createVMBundle()
-            createMainDiskImage()
-
-            let openPanel = NSOpenPanel()
-            openPanel.canChooseFiles = true
-            openPanel.allowsMultipleSelection = false
-            openPanel.canChooseDirectories = false
-            openPanel.canCreateDirectories = false
-
-            openPanel.begin { (result) -> Void in
-                if result == .OK {
-                    self.installerISOPath = openPanel.url!
-                    self.configureAndStartVirtualMachine()
-                } else {
-                    fatalError("ISO file not selected.")
-                }
-            }
-        } else {
-            needsInstall = false
-            configureAndStartVirtualMachine()
-        }
+        needsInstall = false
+        configureAndStartVirtualMachine()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
