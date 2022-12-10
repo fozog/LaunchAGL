@@ -13,9 +13,15 @@ unxz agl-demo-platform-crosssdk-qemuarm64.ext4.xz
 
 prepare a disk image:
 dd if=/dev/zero of=Disk.img bs=1M count=7000
+
+// this will associate a /dev/loop<X> device to your image
 sudo losetup -Pf Disk.img
-// note the /dev/loopX that has been created
-sudo fdisk /dev/loopX
+
+// the following will tell you the value of <X>; you will have to replace <X> with your own value.
+sudo losetup
+
+sudo fdisk /dev/loop<X>
+
 // TODO: properly handle SystremReady-IR bootflow (i.e. UEFI compatible)
 //Create a 800MB EFI partition and the rest as a Linux partition
 sudo dd if=agl-demo-platform-crosssdk-qemuarm64.ext4 of=/dev/loopXp2 bs=1M
