@@ -2,6 +2,9 @@
 
 Install and run GUI Linux in a virtual machine using the Virtualization framework.
 
+(Requires XCode 14.1 and MacOS 13).
+
+
 ## AGL stuf
 
 Create a directory AGL in a Linux machine and place there a prebuilt kernel and rootfs:
